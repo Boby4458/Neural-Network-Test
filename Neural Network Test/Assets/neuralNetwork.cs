@@ -5,42 +5,43 @@ using UnityEngine.UI;
 
 public sealed class neuralNetwork : MonoBehaviour {
 
-    //Backprop equation: change = (learningRate * delta * value) + (momentum * pastChange)
 
-
-
-    //public int hiddenLayerRows;
-
-    public GameObject runner;
-
+    public GameObject myRunner { get { return this.gameObject; } }
     private List<layer> Layers;
     public int[] neuronsPerLayer;
     private layer inputLayer = new layer();
     private layer outputLayer;
     public float initWeightMin, initWeightMax;
     public int layerCount;
+    public float mutationRate;
+    public bool displayNetworkInUI;
+    public float fitness;
+    private sensors mySensors { get { return GetComponent<sensors>(); } }
 
     private void Start()
     {
-        //print(Sigmoid(0.5f).ToString());
-        
-        neuron inputNeuron = new neuron();
-        inputNeuron.curValue = 1;
-        inputLayer.neurons = new List<neuron>();
-        neuron inputNeuron1 = new neuron();
-        inputNeuron1.curValue = 3;
-        neuron inputNeuron2 = new neuron();
-        inputNeuron2.curValue = 7;
-        neuron inputNeuron3 = new neuron();
-        inputNeuron3.curValue = 2;
-        neuron inputNeuron4 = new neuron();
-        inputNeuron4.curValue =  0.5f;
-       
-
-        inputLayer.neurons = new List<neuron>() { inputNeuron, inputNeuron1, inputNeuron2, inputNeuron3, inputNeuron4 };
-        
+        _start();
     }
+    private void Update()
+    {
+        _update();
+    }
+    private void initInputNeurons()
+    {
+        mySensors.init();
+        neuron leftSensor = new neuron();
+        leftSensor.curValue = mySensors.hits[0].distance;
+        neuron negOneSensor = new neuron();
+        negOneSensor.curValue = mySensors.hits[1].distance;
+        neuron forwardSensor = new neuron();
+        forwardSensor.curValue = mySensors.hits[2].distance;
+        neuron oneSensor = new neuron();
+        oneSensor.curValue = mySensors.hits[3].distance;
+        neuron rightSensor = new neuron();
+        rightSensor.curValue = mySensors.hits[4].distance;
 
+        inputLayer.neurons = new List<neuron>() { leftSensor, negOneSensor, forwardSensor, oneSensor, rightSensor };
+    }
     private void displayNetwork()
     {
         for (int x = 0; x < Layers.Count; x++)
@@ -54,14 +55,10 @@ public sealed class neuralNetwork : MonoBehaviour {
         }
         for (int x = 1; x < Layers.Count; x++)
         {
-
-            //print(x);
             for (int y = 0; y < Layers[x].neurons.Count; y++)
             {
-               // print(y);
                 for (int z = 0; z < Layers[x].neurons[y].backwardWeights.Count; z++)
                 {
-                  //  print(z);
                     GameObject.Find("(" + (x-1).ToString() + ", " + (y).ToString() + ")" + "C (" + z.ToString() + ")").GetComponent<Text>().text = Layers[x].neurons[y].backwardWeights[z].ToString();
                 }
             }
@@ -138,9 +135,17 @@ public sealed class neuralNetwork : MonoBehaviour {
         }
     }
 
-    private float Sigmoid(float x)
+    //
+    //----Sigmoid Activation Function:----
+    //private float Sigmoid(float x)
+    //{
+    //  return 1 / (1f + Mathf.Exp(0.5f * -x));
+    //}
+    //
+
+    float SoftSign(float inp)
     {
-        return 1 / (1f + Mathf.Exp(0.5f * -x));
+        return inp / (1 + Mathf.Abs(inp));
     }
 
     public float run()
@@ -157,55 +162,51 @@ public sealed class neuralNetwork : MonoBehaviour {
                     sum += curValue * Layers[l].neurons[n].backwardWeights[conn];
                 }
                 sum += Layers[l].neurons[n].bias;
-                sum = Sigmoid(sum);
+                sum = SoftSign(sum);
                 Layers[l].neurons[n].curValue = sum;
             }
         }
-        return Layers[Layers.Count].neurons[0].curValue;
+        layer outputLayer = Layers[Layers.Count - 1]; ;
+        return outputLayer.neurons[0].curValue;
     }
-
+    
     private void evolve()
     {
-
-    }
-    private void populate()
-    {
-        if (Layers.Count == 0)
-        {
-            generateNetwork();
-        }
         
+    }
+
+    private void _start()
+    {
+        initInputNeurons();
+        generateNetwork();
         initWeights();
         initBiases();
-        run();
-        displayNetwork();
-        Instantiate(runner, GameObject.Find("spawnpoint").transform.position, GameObject.Find("spawnpoint").transform.rotation);
-
+        
     }
 
+    private void _update()
+    {
+        if (displayNetworkInUI) displayNetwork();
+    }
+    
+    public void die()
+    {
+
+    }
 }
+
 sealed class layer
 {
     public List<neuron> neurons = new List<neuron>();
-  
-
 }
+
 sealed class neuron
 {
 
-    public neuronType myType;
     public float bias;
     public float curValue;
     public List<neuron> forwardConnections = new List<neuron>();
     public List<neuron> backwardConnections = new List<neuron>();
-    //public List<float> forwardWeights = new List<float>();
     public List<float> backwardWeights = new List<float>();
 
 }
-
-enum neuronType
-{
-    inputNeuron,
-    hiddenNeuron,
-    outPutNeuron
-};
